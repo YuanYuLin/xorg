@@ -20,8 +20,12 @@ src_usr_lib_xorg_modules_input_dir = ""
 dst_usr_lib_xorg_modules_input_dir = ""
 src_usr_share_dir = ""
 dst_usr_share_dir = ""
+src_usr_include_dir = ""
+dst_usr_include_dir = ""
 pkg_tarball = ""
+pkg_sysroot_tarball = ""
 pkg_tarball_dir = ""
+pkg_sysroot_tarball_dir = ""
 
 def set_global(args):
     global pkg_path
@@ -43,23 +47,35 @@ def set_global(args):
     global dst_usr_lib_xorg_modules_input_dir
     global src_usr_share_dir
     global dst_usr_share_dir
+    global src_usr_include_dir
+    global dst_usr_include_dir
     global pkg_tarball
+    global pkg_sysroot_tarball
     global pkg_tarball_dir
+    global pkg_sysroot_tarball_dir
 
     pkg_path = args["pkg_path"]
     output_dir = args["output_path"]
     arch = ops.getEnv("ARCH_ALT")
+    pkg_tarball = ops.path_join(pkg_path, "xorg.tar.xz")
     if arch == "armhf":
         src_lib_dir = iopc.getBaseRootFile("lib/arm-linux-gnueabihf")
+        pkg_tarball = ops.path_join(pkg_path, "xorg_armhf.tar.xz")
     elif arch == "armel":
         src_lib_dir = iopc.getBaseRootFile("lib/arm-linux-gnueabi")
+        pkg_tarball = ops.path_join(pkg_path, "xorg_armel.tar.xz")
+        pkg_sysroot_tarball = ops.path_join(pkg_path, "xorg_armel_sysroot.tar.xz")
+    elif arch == "x86_64":
+        src_lib_dir = iopc.getBaseRootFile("lib/x86_64-linux-gnu")
+        pkg_tarball = ops.path_join(pkg_path, "xorg_x86_64.tar.xz")
+        pkg_sysroot_tarball = ops.path_join(pkg_path, "xorg_x86_64_sysroot.tar.xz")
     else:
         sys.exit(1)
 
     dst_lib_dir = ops.path_join(output_dir, "lib")
 
-    pkg_tarball = ops.path_join(pkg_path, "xorg.tar.xz")
     pkg_tarball_dir = ops.path_join(output_dir, "target")
+    pkg_sysroot_tarball_dir = ops.path_join(output_dir, "sysroot")
 
     src_usr_lib_dir = ops.path_join(pkg_tarball_dir, "usr/lib")
     dst_usr_lib_dir = ops.path_join(output_dir, "usr/lib")
@@ -82,6 +98,13 @@ def set_global(args):
     src_usr_share_dir = ops.path_join(pkg_tarball_dir, "usr/share")
     dst_usr_share_dir = ops.path_join(output_dir, "usr/share")
 
+    src_usr_include_dir = ops.path_join(pkg_sysroot_tarball_dir, "usr/include")
+    dst_usr_include_dir = ops.path_join(output_dir, "usr/include")
+
+    src_include_dir = iopc.getBaseRootFile("usr/include/selinux")
+    dst_include_dir = ops.path_join("include",args["pkg_name"])
+
+
 def MAIN_ENV(args):
     set_global(args)
 
@@ -91,6 +114,7 @@ def MAIN_EXTRACT(args):
     set_global(args)
 
     ops.unTarXz(pkg_tarball, output_dir)
+    ops.unTarXz(pkg_sysroot_tarball, output_dir)
 
     return True
 
@@ -260,27 +284,6 @@ def MAIN_BUILD(args):
     ops.copyto(ops.path_join(src_usr_share_dir, "xcb"), dst_usr_share_dir)
     ops.copyto(ops.path_join(src_usr_share_dir, "locale"), dst_usr_share_dir)
 
-    install_package_xeyes(args)
-
-    return False
-
-def MAIN_INSTALL(args):
-    set_global(args)
-
-    iopc.installBin(args["pkg_name"], ops.path_join(dst_usr_lib_dir, "."), "usr/lib")
-    iopc.installBin(args["pkg_name"], ops.path_join(dst_usr_bin_dir, "."), "usr/bin")
-    iopc.installBin(args["pkg_name"], ops.path_join(dst_usr_share_dir, "."), "usr/share")
-
-    return False
-
-def MAIN_CLEAN_BUILD(args):
-    set_global(args)
-    return False
-
-def MAIN(args):
-    set_global(args)
-
-
     ops.mkdir(ops.path_join(dst_usr_share_dir, "fonts/X11"))
     ops.copyto(ops.path_join(src_usr_share_dir, "fonts/X11/100dpi"), ops.path_join(dst_usr_share_dir, "fonts/X11"))
     ops.copyto(ops.path_join(src_usr_share_dir, "fonts/X11/75dpi"), ops.path_join(dst_usr_share_dir, "fonts/X11"))
@@ -288,7 +291,12 @@ def MAIN(args):
     ops.copyto(ops.path_join(src_usr_share_dir, "fonts/X11/encodings"), ops.path_join(dst_usr_share_dir, "fonts/X11"))
     ops.copyto(ops.path_join(src_usr_share_dir, "fonts/X11/misc"), ops.path_join(dst_usr_share_dir, "fonts/X11"))
 
-    return False
+    ops.mkdir(dst_usr_include_dir)
+    ops.copyto(ops.path_join(src_usr_include_dir, "xcb"), dst_usr_include_dir)
+
+    install_package_xeyes(args)
+
+    return True
 
 def MAIN_INSTALL(args):
     set_global(args)
@@ -296,6 +304,7 @@ def MAIN_INSTALL(args):
     iopc.installBin(args["pkg_name"], ops.path_join(dst_usr_lib_dir, "."), "usr/lib")
     iopc.installBin(args["pkg_name"], ops.path_join(dst_usr_bin_dir, "."), "usr/bin")
     iopc.installBin(args["pkg_name"], ops.path_join(dst_usr_share_dir, "."), "usr/share")
+    iopc.installBin(args["pkg_name"], ops.path_join(dst_usr_include_dir, "."), "include")
 
     return False
 
